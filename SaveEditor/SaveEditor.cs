@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Windows.Forms;
 using System.Drawing;
+using AtOSaveEditor.Helpers;
 
 
 
@@ -262,18 +263,7 @@ namespace AtOSaveEditor
 
         private SaveData DecryptAndDeserialize(string filePath)
         {
-            using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
-            using (DESCryptoServiceProvider des = new DESCryptoServiceProvider())
-            using (var cs = new CryptoStream(fs, des.CreateDecryptor(key, iv), CryptoStreamMode.Read))
-            {
-#pragma warning disable SYSLIB0011
-                BinaryFormatter formatter = new BinaryFormatter();
-                object obj = formatter.Deserialize(cs);
-#pragma warning restore SYSLIB0011
-                // Convert the deserialized object to JSON then to SaveData
-                string json = JsonSerializer.Serialize(obj, new JsonSerializerOptions { WriteIndented = true, IncludeFields = true });
-                return JsonSerializer.Deserialize<SaveData>(json);
-            }
+            return CryptoHelper.DecryptAndDeserialize(filePath, key, iv);
         }
 
         private void PopulateTabs()
@@ -329,16 +319,7 @@ namespace AtOSaveEditor
 
         private void SerializeAndEncrypt(SaveData data, string filePath)
         {
-            using (FileStream fs = new FileStream(filePath, FileMode.Create, FileAccess.Write))
-            using (DESCryptoServiceProvider des = new DESCryptoServiceProvider())
-            using (var cs = new CryptoStream(fs, des.CreateEncryptor(key, iv), CryptoStreamMode.Write))
-            {
-#pragma warning disable SYSLIB0011
-                BinaryFormatter formatter = new BinaryFormatter();
-                // Directly serialize the SaveData object instead of using JSON round-trip.
-                formatter.Serialize(cs, data);
-#pragma warning restore SYSLIB0011
-            }
+            CryptoHelper.SerializeAndEncrypt(data, filePath, key, iv);
         }
 
         // ADD event handler for "Decrypt to JSON"
