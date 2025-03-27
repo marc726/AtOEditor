@@ -6,22 +6,21 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Windows.Forms;
 using System.Drawing;
+using AtOSaveEditor.Helpers;
 
 
 
 namespace AtOSaveEditor
 
 {
-    // Minimal classes for the save data.
     [Serializable]
     public class SaveData
     {
         public string GameDate { get; set; }
         public string CurrentMapNode { get; set; }
-        // The TeamAtO field is stored as a JSON string.
+        // TeamAtO field is stored as a JSON string.
         public string TeamAtO { get; set; }
         public int GameMode { get; set; }
-        // ... add other fields as needed.
     }
 
     public class TeamAtO
@@ -72,31 +71,26 @@ namespace AtOSaveEditor
         private Button btnOpen, btnSave;
         private TabControl tabControl;
 
-        // Current loaded save data
         private SaveData currentSaveData;
         private TeamAtO currentTeam;
         private string currentAtoPath;
 
-        // DES Key/IV (as provided)
+        // DES Key/IV 
         private readonly byte[] key = new byte[] { 18, 54, 100, 160, 190, 148, 136, 3 };
         private readonly byte[] iv = new byte[] { 82, 242, 164, 132, 119, 197, 179, 20 };
 
-        // Folder where card images are stored (relative to exe)
         private string assetsPath;
 
-        // Pool of available card names (derived from image filenames)
         private List<CardInfo> availableCards;
 
-        // Cache file path
         private string cacheFilePath;
 
         public MainForm()
         {
             this.Text = "ATO Save Editor";
-            this.MinimumSize = new Size(1000, 600);  // enforce minimum size
-            this.Size = new Size(1000, 600);         // initial size
+            this.MinimumSize = new Size(1000, 600);
+            this.Size = new Size(1000, 600);
 
-            // Create a MenuStrip and add the File menu with Open and Save items.
             MenuStrip menuStrip = new MenuStrip();
             this.MainMenuStrip = menuStrip;
             menuStrip.Dock = DockStyle.Top;
@@ -113,61 +107,51 @@ namespace AtOSaveEditor
             saveAtoItem.Click += BtnSave_Click;
             fileMenu.DropDownItems.Add(saveAtoItem);
 
-            // Add Tools menu with Recache option
             ToolStripMenuItem toolsMenu = new ToolStripMenuItem("Tools");
             menuStrip.Items.Add(toolsMenu);
             ToolStripMenuItem recacheToolItem = new ToolStripMenuItem("Recache Card Images");
             recacheToolItem.Click += RecacheToolItem_Click;
             toolsMenu.DropDownItems.Add(recacheToolItem);
-            // ADD: Decrypt to JSON tool
+
             ToolStripMenuItem decryptJsonToolItem = new ToolStripMenuItem("Decrypt to JSON");
             decryptJsonToolItem.Click += DecryptToJsonToolItem_Click;
             toolsMenu.DropDownItems.Add(decryptJsonToolItem);
-            // ADD: Encrypt JSON to ATO tool
+
             ToolStripMenuItem encryptJsonToolItem = new ToolStripMenuItem("Encrypt JSON to ATO");
             encryptJsonToolItem.Click += EncryptJsonToAtoToolItem_Click;
             toolsMenu.DropDownItems.Add(encryptJsonToolItem);
 
-            // Create the TabControl for hero tabs with owner-draw settings.
-            // In your MainForm constructor, after initializing the TabControl:
             tabControl = new TabControl();
             tabControl.Dock = DockStyle.Fill;
             tabControl.Multiline = true;
             tabControl.SizeMode = TabSizeMode.Fixed;
-            tabControl.ItemSize = new Size(150, 60);  // Increased height for more room
+            tabControl.ItemSize = new Size(150, 60);
             tabControl.DrawMode = TabDrawMode.OwnerDrawFixed;
             tabControl.DrawItem += tabControl_DrawItem;
 
             this.Controls.Add(tabControl);
 
-            // Set up assets path using the actual EXE directory.
             string exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
             string exeDir = Path.GetDirectoryName(exePath);
             assetsPath = Path.Combine(exeDir, "assets", "cardimg");
 
-            // Set cache file path in exe directory.
             cacheFilePath = Path.Combine(exeDir, "cardCache.json");
             LoadAvailableCards();
         }
 
-        // Custom DrawItem event handler for the TabControl
         private void tabControl_DrawItem(object sender, DrawItemEventArgs e)
         {
             TabControl tc = sender as TabControl;
             if (tc == null)
                 return;
 
-            // Retrieve the text for the current tab.
             string tabText = tc.TabPages[e.Index].Text;
 
-            // Draw the tab background.
             e.DrawBackground();
 
-            // Create a rectangle for drawing the text with minimal padding.
             Rectangle rect = e.Bounds;
-            rect.Inflate(-1, -1);  // Reduce the padding so more text fits
+            rect.Inflate(-1, -1);
 
-            // Set up a StringFormat for centered text with ellipsis if necessary.
             using (StringFormat sf = new StringFormat())
             {
                 sf.Alignment = StringAlignment.Center;
@@ -226,9 +210,7 @@ namespace AtOSaveEditor
                     }
                 }
             }
-            // Sort availableCards by Name if needed.
             availableCards = availableCards.OrderBy(c => c.Name).ToList();
-            // Save to cache file.
             File.WriteAllText(cacheFilePath, JsonSerializer.Serialize(availableCards, new JsonSerializerOptions { WriteIndented = true }));
         }
 
@@ -247,9 +229,7 @@ namespace AtOSaveEditor
                 currentAtoPath = dlg.FileName;
                 try
                 {
-                    // Decrypt and deserialize .ato file
                     currentSaveData = DecryptAndDeserialize(currentAtoPath);
-                    // currentSaveData.TeamAtO is a JSON string; parse it to TeamAtO
                     currentTeam = JsonSerializer.Deserialize<TeamAtO>(currentSaveData.TeamAtO);
                     PopulateTabs();
                 }
@@ -262,18 +242,7 @@ namespace AtOSaveEditor
 
         private SaveData DecryptAndDeserialize(string filePath)
         {
-            using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
-            using (DESCryptoServiceProvider des = new DESCryptoServiceProvider())
-            using (var cs = new CryptoStream(fs, des.CreateDecryptor(key, iv), CryptoStreamMode.Read))
-            {
-#pragma warning disable SYSLIB0011
-                BinaryFormatter formatter = new BinaryFormatter();
-                object obj = formatter.Deserialize(cs);
-#pragma warning restore SYSLIB0011
-                // Convert the deserialized object to JSON then to SaveData
-                string json = JsonSerializer.Serialize(obj, new JsonSerializerOptions { WriteIndented = true, IncludeFields = true });
-                return JsonSerializer.Deserialize<SaveData>(json);
-            }
+            return CryptoHelper.DecryptAndDeserialize(filePath, key, iv);
         }
 
         private void PopulateTabs()
@@ -287,13 +256,11 @@ namespace AtOSaveEditor
             foreach (var hero in currentTeam.Items)
             {
                 TabPage page = new TabPage(hero.gameName ?? "Hero");
-                // Create a HeroEditorControl for this hero
                 HeroEditorControl editor = new HeroEditorControl(hero, availableCards, assetsPath);
                 editor.Dock = DockStyle.Fill;
                 page.Controls.Add(editor);
                 tabControl.TabPages.Add(page);
             }
-            // ADD: Center the tabs if there are exactly 4 heroes.
             if (tabControl.TabCount == 4)
             {
                 int totalTabsWidth = tabControl.ItemSize.Width * 4;
@@ -304,12 +271,7 @@ namespace AtOSaveEditor
 
         private void BtnSave_Click(object sender, EventArgs e)
         {
-            // (Optional) Update the currentTeam data from each HeroEditorControl if needed.
-            // In this example, HeroEditorControl edits the Hero object in place.
-
-            // Convert currentTeam back to JSON string and update currentSaveData
             currentSaveData.TeamAtO = JsonSerializer.Serialize(currentTeam, new JsonSerializerOptions { WriteIndented = true });
-            // Ask for a file location to save the new .ato
             SaveFileDialog dlg = new SaveFileDialog();
             dlg.Filter = "ATO Files (*.ato)|*.ato";
             dlg.FileName = Path.GetFileNameWithoutExtension(currentAtoPath) + ".new.ato";
@@ -329,19 +291,10 @@ namespace AtOSaveEditor
 
         private void SerializeAndEncrypt(SaveData data, string filePath)
         {
-            using (FileStream fs = new FileStream(filePath, FileMode.Create, FileAccess.Write))
-            using (DESCryptoServiceProvider des = new DESCryptoServiceProvider())
-            using (var cs = new CryptoStream(fs, des.CreateEncryptor(key, iv), CryptoStreamMode.Write))
-            {
-#pragma warning disable SYSLIB0011
-                BinaryFormatter formatter = new BinaryFormatter();
-                // Directly serialize the SaveData object instead of using JSON round-trip.
-                formatter.Serialize(cs, data);
-#pragma warning restore SYSLIB0011
-            }
+            CryptoHelper.SerializeAndEncrypt(data, filePath, key, iv);
         }
 
-        // ADD event handler for "Decrypt to JSON"
+        // event handler for "Decrypt to JSON"
         private void DecryptToJsonToolItem_Click(object sender, EventArgs e)
         {
             OpenFileDialog dlg = new OpenFileDialog { Filter = "ATO Files (*.ato)|*.ato" };
@@ -356,7 +309,7 @@ namespace AtOSaveEditor
             }
         }
 
-        // ADD event handler for "Encrypt JSON to ATO"
+        // event handler for "Encrypt JSON to ATO"
         private void EncryptJsonToAtoToolItem_Click(object sender, EventArgs e)
         {
             OpenFileDialog dlg = new OpenFileDialog { Filter = "JSON Files (*.json)|*.json" };
@@ -372,7 +325,6 @@ namespace AtOSaveEditor
         }
     }
 
-    // A UserControl that displays hero details and deck editing UI
     public class HeroEditorControl : UserControl
     {
         public Hero HeroData { get; private set; }
@@ -388,7 +340,6 @@ namespace AtOSaveEditor
         private PictureBox picCard;
         private Button btnAdd, btnRemove;
 
-        // Field for category filter checkboxes
         private FlowLayoutPanel filterPanel;
         private List<CheckBox> categoryCheckBoxes = new List<CheckBox>();
 
@@ -405,53 +356,43 @@ namespace AtOSaveEditor
         {
             this.Dock = DockStyle.Fill;
 
-            // 1) Create the main TableLayoutPanel with 2 rows and 3 columns
             TableLayoutPanel mainLayout = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 RowCount = 2,
                 ColumnCount = 3
             };
-            // Row 0: Auto-size for hero details
             mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            // Row 1: Fills the remaining space for the deck/card/pool
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
-            // Column 0 = 30% width, Column 1 = 40%, Column 2 = 30%
             mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
             mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
             mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
 
             this.Controls.Add(mainLayout);
 
-            // 2) Create a Panel for hero details in Row 0 (spanning all 3 columns)
             Panel detailsPanel = new Panel { Dock = DockStyle.Fill, AutoSize = true };
             lblDetails = new Label
             {
                 AutoSize = true,
                 Dock = DockStyle.Top,
-                // If your text is long, consider setting MaximumSize or using a multi-line approach.
             };
             detailsPanel.Controls.Add(lblDetails);
 
-            // Place detailsPanel in row=0, col=0, spanning all 3 columns
             mainLayout.SetColumnSpan(detailsPanel, 3);
             mainLayout.Controls.Add(detailsPanel, 0, 0);
 
-            // 3) Deck panel (left column, row=1)
             Panel deckPanel = new Panel { Dock = DockStyle.Fill };
             Label lblDeck = new Label { Text = "Deck", Dock = DockStyle.Top };
             txtDeckSearch = new TextBox { Dock = DockStyle.Top, PlaceholderText = "Search Deck..." };
             lstDeck = new ListBox { Dock = DockStyle.Fill };
             btnRemove = new Button { Text = "Remove Card", Dock = DockStyle.Bottom };
 
-            // Add controls to deckPanel
             deckPanel.Controls.Add(lstDeck);
             deckPanel.Controls.Add(txtDeckSearch);
             deckPanel.Controls.Add(lblDeck);
             deckPanel.Controls.Add(btnRemove);
 
-            // 4) Card image panel (center column, row=1)
             Panel cardPanel = new Panel { Dock = DockStyle.Fill };
             picCard = new PictureBox
             {
@@ -460,11 +401,9 @@ namespace AtOSaveEditor
             };
             cardPanel.Controls.Add(picCard);
 
-            // 5) Pool panel (right column, row=1)
             Panel poolPanel = new Panel { Dock = DockStyle.Fill };
             Label lblPool = new Label { Text = "Available Cards", Dock = DockStyle.Top };
 
-            // Create filterPanel with checkboxes for subfolders
             filterPanel = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true };
             string[] categories = { "Boon", "Healer", "Injury", "Item", "Mage", "MagicKnight", "Monster", "Scout", "Special", "Warrior" };
             foreach (var cat in categories)
@@ -479,19 +418,16 @@ namespace AtOSaveEditor
             lstPool = new ListBox { Dock = DockStyle.Fill };
             btnAdd = new Button { Text = "Add Card", Dock = DockStyle.Bottom };
 
-            // Add controls to poolPanel in order: label, filterPanel, search, list, button.
             poolPanel.Controls.Add(lstPool);
             poolPanel.Controls.Add(txtPoolSearch);
             poolPanel.Controls.Add(filterPanel);
             poolPanel.Controls.Add(lblPool);
             poolPanel.Controls.Add(btnAdd);
 
-            // 6) Add these three panels to row=1
             mainLayout.Controls.Add(deckPanel, 0, 1); // Left
             mainLayout.Controls.Add(cardPanel, 1, 1); // Center
             mainLayout.Controls.Add(poolPanel, 2, 1); // Right
 
-            // 7) Hook up events
             txtDeckSearch.TextChanged += TxtDeckSearch_TextChanged;
             txtPoolSearch.TextChanged += TxtPoolSearch_TextChanged;
             lstDeck.SelectedIndexChanged += LstDeck_SelectedIndexChanged;

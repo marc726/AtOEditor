@@ -21,6 +21,6 @@
     </Reference>
   </ItemGroup>
 
-
+  <!-- Removed explicit inclusion of Helpers\CryptoHelper.cs -->
 
 </Project>
