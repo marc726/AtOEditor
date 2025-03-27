@@ -1,0 +1,35 @@
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual environments
+env/
+venv/
+.venv/
+
+# VSCode settings
+.vscode/
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Secrets / keys
+*.pem
+*.key
+.env
+
+#bin, obj, lib
+SaveEditor/bin
+SaveEditor/obj
+SaveEditor/lib
+
+#.png card asssets
+/assets/
+
+# Build results
+*.exe
