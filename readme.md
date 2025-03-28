@@ -24,7 +24,7 @@ The project targets .NET 8.0 (net8.0-windows)
 
 #### Requirements:
 
- - Two .dlls are required to be put into `./lib/` which are `Assembly-CSharp.dll` and `UnityEngine.CoreModule.dll`
+ - Two .dlls are required to be put into `./lib/` which are `Assembly-CSharp.dll` and `UnityEngine.CoreModule.dll`. You can find these in your game install folder.
 
  - (Optional) Assets are to be pulled separately. The program relies on a specific method using the dev menu. You MUST label the folders accordingly: `/assets/cardimg/<subfolders here>`. These subfolders are labeled already if you extracted using the dev tool. While it is optional, I highly recommend this as naming scheme isn't implemented yet and just focusing on raw names parsed from JSON. Card images allow you to see effects. 
 
