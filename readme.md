@@ -1,7 +1,8 @@
 ## Across the Obelisk Deck Editor
 
-This is a very early stage deck editor for the game Across the Obelisk. Currently, it only shows the info for all 4 characters and only you deck can be modified.
+This is a very early stage deck editor for the game Across the Obelisk. Currently, it only shows the info for all 4 characters and only you deck can be modified. 
 
+Tested on Across the Obelisk v1.5.0
 
 **.NET SDK:**  
 The project targets .NET 8.0 (net8.0-windows)
