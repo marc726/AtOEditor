@@ -190,11 +190,19 @@ namespace AtOSaveEditor
 
                     try
                     {
-                        currentTeam = JsonSerializer.Deserialize<TeamAtO>(currentSaveData.TeamAtO);
+                        var jsonOptions = new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = false,
+                            WriteIndented = true
+                        };
+
+                        currentTeam = JsonSerializer.Deserialize<TeamAtO>(currentSaveData.TeamAtO, jsonOptions);
                         if (currentTeam == null)
                         {
                             throw new JsonException("TeamAtO deserialized to null");
                         }
+
+                        PopulateTabs();
                     }
                     catch (JsonException jsonEx)
                     {
@@ -202,8 +210,6 @@ namespace AtOSaveEditor
                             MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
-
-                    PopulateTabs();
                 }
                 catch (OperationCanceledException)
                 {

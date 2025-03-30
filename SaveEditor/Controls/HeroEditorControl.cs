@@ -14,7 +14,8 @@ namespace AtOSaveEditor.Controls
         private readonly List<CardInfo> availableCards;
         private readonly string assetsPath;
 
-        // UI controls - making them nullable to fix non-nullable field errors
+        // UI controls
+        private TabControl tabControl = new(); // Initialize to fix non-nullable warning
         private Label? lblDetails;
         private ListBox? lstDeck;
         private TextBox? txtDeckSearch;
@@ -25,11 +26,26 @@ namespace AtOSaveEditor.Controls
         private FlowLayoutPanel? filterPanel;
         private readonly List<CheckBox> categoryCheckBoxes = new List<CheckBox>();
 
+        // Items controls
+        private ComboBox? cmbWeapon;
+        private ComboBox? cmbArmor;
+        private ComboBox? cmbJewelry;
+        private ComboBox? cmbAccessory;
+
+        // Stats controls
+        private NumericUpDown? nudHp;
+        private NumericUpDown? nudEnergy;
+        private NumericUpDown? nudSpeed;
+        private NumericUpDown? nudGold;
+        private NumericUpDown? nudDust;
+        private Dictionary<string, NumericUpDown> resistControls;
+
         public HeroEditorControl(AtOSaveEditor.Models.Hero hero, List<CardInfo> availableCards, string assetsPath)
         {
             this.HeroData = hero ?? throw new ArgumentNullException(nameof(hero));
             this.availableCards = availableCards ?? new List<CardInfo>();
             this.assetsPath = assetsPath ?? string.Empty;
+            this.resistControls = new Dictionary<string, NumericUpDown>();
             InitializeUI();
             LoadData();
         }
@@ -38,110 +54,344 @@ namespace AtOSaveEditor.Controls
         {
             this.Dock = DockStyle.Fill;
 
+            // Create main tab control
+            tabControl = new TabControl();
+            tabControl.Dock = DockStyle.Fill;
+
+            // Details panel at top
+            Panel detailsPanel = new Panel { Dock = DockStyle.Top, Height = 40 };
+            lblDetails = new Label { AutoSize = true, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(10, 0, 0, 0) };
+            detailsPanel.Controls.Add(lblDetails);
+
+            // Create main layout
             TableLayoutPanel mainLayout = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 RowCount = 2,
-                ColumnCount = 3
+                ColumnCount = 1,
+                Padding = new Padding(0)
             };
             mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
-            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
-            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
-            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
+            mainLayout.Controls.Add(detailsPanel, 0, 0);
+            mainLayout.Controls.Add(tabControl, 0, 1);
 
             this.Controls.Add(mainLayout);
 
-            Panel detailsPanel = new Panel { Dock = DockStyle.Fill, AutoSize = true };
-            lblDetails = new Label
-            {
-                AutoSize = true,
-                Dock = DockStyle.Top,
-            };
-            detailsPanel.Controls.Add(lblDetails);
+            // Create tabs
+            TabPage deckTab = CreateDeckTab();
+            TabPage itemsTab = CreateItemsTab();
+            TabPage statsTab = CreateStatsTab();
 
-            mainLayout.SetColumnSpan(detailsPanel, 3);
-            mainLayout.Controls.Add(detailsPanel, 0, 0);
+            tabControl.TabPages.Add(deckTab);
+            tabControl.TabPages.Add(itemsTab);
+            tabControl.TabPages.Add(statsTab);
 
-            Panel deckPanel = new Panel { Dock = DockStyle.Fill };
-            Label lblDeck = new Label { Text = "Deck", Dock = DockStyle.Top };
-            txtDeckSearch = new TextBox { Dock = DockStyle.Top };
-            txtDeckSearch.SetPlaceholderText("Search Deck...");
-
-            lstDeck = new ListBox { Dock = DockStyle.Fill };
-            btnRemove = new Button { Text = "Remove Card", Dock = DockStyle.Bottom };
-
-            deckPanel.Controls.Add(lstDeck);
-            deckPanel.Controls.Add(txtDeckSearch);
-            deckPanel.Controls.Add(lblDeck);
-            deckPanel.Controls.Add(btnRemove);
-
-            Panel cardPanel = new Panel { Dock = DockStyle.Fill };
-            picCard = new PictureBox
-            {
-                Dock = DockStyle.Fill,
-                SizeMode = PictureBoxSizeMode.Zoom
-            };
-            cardPanel.Controls.Add(picCard);
-
-            Panel poolPanel = new Panel { Dock = DockStyle.Fill };
-            Label lblPool = new Label { Text = "Available Cards", Dock = DockStyle.Top };
-
-            filterPanel = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true };
-            string[] categories = { "Boon", "Healer", "Injury", "Item", "Mage", "MagicKnight", "Monster", "Scout", "Special", "Warrior" };
-            foreach (var cat in categories)
-            {
-                CheckBox cb = new CheckBox { Text = cat, AutoSize = true };
-                cb.CheckedChanged += (s, e) => { UpdatePoolList(); };
-                categoryCheckBoxes.Add(cb);
-                filterPanel.Controls.Add(cb);
-            }
-
-            txtPoolSearch = new TextBox { Dock = DockStyle.Top };
-            txtPoolSearch.SetPlaceholderText("Search Pool...");
-
-            lstPool = new ListBox { Dock = DockStyle.Fill };
-            btnAdd = new Button { Text = "Add Card", Dock = DockStyle.Bottom };
-
-            poolPanel.Controls.Add(lstPool);
-            poolPanel.Controls.Add(txtPoolSearch);
-            poolPanel.Controls.Add(filterPanel);
-            poolPanel.Controls.Add(lblPool);
-            poolPanel.Controls.Add(btnAdd);
-
-            mainLayout.Controls.Add(deckPanel, 0, 1); // Left
-            mainLayout.Controls.Add(cardPanel, 1, 1); // Center
-            mainLayout.Controls.Add(poolPanel, 2, 1); // Right
-
-            // Fix event handler signature by using object? instead of object
+            // Wire up events
             if (txtDeckSearch != null) txtDeckSearch.TextChanged += TxtDeckSearch_TextChanged;
             if (txtPoolSearch != null) txtPoolSearch.TextChanged += TxtPoolSearch_TextChanged;
             if (lstDeck != null) lstDeck.SelectedIndexChanged += LstDeck_SelectedIndexChanged;
             if (lstPool != null) lstPool.SelectedIndexChanged += LstPool_SelectedIndexChanged;
             if (btnRemove != null) btnRemove.Click += BtnRemove_Click;
             if (btnAdd != null) btnAdd.Click += BtnAdd_Click;
+
+            // Wire up item change events
+            if (cmbWeapon != null) cmbWeapon.SelectedIndexChanged += (s, e) => { if (cmbWeapon.SelectedItem != null) HeroData.weapon = cmbWeapon.SelectedItem.ToString(); };
+            if (cmbArmor != null) cmbArmor.SelectedIndexChanged += (s, e) => { if (cmbArmor.SelectedItem != null) HeroData.armor = cmbArmor.SelectedItem.ToString(); };
+            if (cmbJewelry != null) cmbJewelry.SelectedIndexChanged += (s, e) => { if (cmbJewelry.SelectedItem != null) HeroData.jewelry = cmbJewelry.SelectedItem.ToString(); };
+            if (cmbAccessory != null) cmbAccessory.SelectedIndexChanged += (s, e) => { if (cmbAccessory.SelectedItem != null) HeroData.accesory = cmbAccessory.SelectedItem.ToString(); };
+
+            // Wire up stats change events
+            if (nudHp != null) nudHp.ValueChanged += (s, e) => { if (HeroData != null) HeroData.hp = (int)nudHp.Value; };
+            if (nudEnergy != null) nudEnergy.ValueChanged += (s, e) => { if (HeroData != null) HeroData.energy = (int)nudEnergy.Value; };
+            if (nudSpeed != null) nudSpeed.ValueChanged += (s, e) => { if (HeroData != null) HeroData.speed = (int)nudSpeed.Value; };
+            if (nudGold != null) nudGold.ValueChanged += (s, e) => { if (HeroData != null) HeroData.heroGold = (int)nudGold.Value; };
+            if (nudDust != null) nudDust.ValueChanged += (s, e) => { if (HeroData != null) HeroData.heroDust = (int)nudDust.Value; };
+        }
+
+        private TabPage CreateDeckTab()
+        {
+            TabPage deckTab = new TabPage("Deck");
+            TableLayoutPanel layout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 3
+            };
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
+
+            // Left panel (Deck)
+            Panel deckPanel = new Panel { Dock = DockStyle.Fill };
+            Label lblDeck = new Label { Text = "Deck", Dock = DockStyle.Top };
+            txtDeckSearch = new TextBox { Dock = DockStyle.Top };
+            txtDeckSearch.SetPlaceholderText("Search Deck...");
+            lstDeck = new ListBox { Dock = DockStyle.Fill };
+            btnRemove = new Button { Text = "Remove Card", Dock = DockStyle.Bottom };
+            deckPanel.Controls.AddRange(new Control[] { lstDeck, txtDeckSearch, lblDeck, btnRemove });
+
+            // Center panel (Card preview)
+            Panel cardPanel = new Panel { Dock = DockStyle.Fill };
+            picCard = new PictureBox { Dock = DockStyle.Fill, SizeMode = PictureBoxSizeMode.Zoom };
+            cardPanel.Controls.Add(picCard);
+
+            // Right panel (Card pool)
+            Panel poolPanel = new Panel { Dock = DockStyle.Fill };
+            Label lblPool = new Label { Text = "Available Cards", Dock = DockStyle.Top };
+            filterPanel = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true };
+
+            string[] categories = { "Boon", "Healer", "Injury", "Item", "Mage", "MagicKnight", "Monster", "Scout", "Special", "Warrior" };
+            foreach (var cat in categories)
+            {
+                CheckBox cb = new CheckBox { Text = cat, AutoSize = true };
+                cb.CheckedChanged += (s, e) => UpdatePoolList();
+                categoryCheckBoxes.Add(cb);
+                filterPanel.Controls.Add(cb);
+            }
+
+            txtPoolSearch = new TextBox { Dock = DockStyle.Top };
+            txtPoolSearch.SetPlaceholderText("Search Pool...");
+            lstPool = new ListBox { Dock = DockStyle.Fill };
+            btnAdd = new Button { Text = "Add Card", Dock = DockStyle.Bottom };
+            poolPanel.Controls.AddRange(new Control[] { lstPool, txtPoolSearch, filterPanel, lblPool, btnAdd });
+
+            layout.Controls.AddRange(new Control[] { deckPanel, cardPanel, poolPanel });
+            deckTab.Controls.Add(layout);
+            return deckTab;
+        }
+
+        private TabPage CreateItemsTab()
+        {
+            TabPage itemsTab = new TabPage("Items");
+            TableLayoutPanel layout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 4,
+                Padding = new Padding(10),
+                AutoSize = true
+            };
+
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70F));
+
+            // Add item selection dropdowns
+            int currentRow = 0;
+
+            // Center everything in a panel with padding
+            Panel contentPanel = new Panel
+            {
+                AutoSize = true,
+                Padding = new Padding(10),
+                Dock = DockStyle.Top
+            };
+
+            AddItemRow(layout, "Weapon:", ref cmbWeapon, currentRow++);
+            AddItemRow(layout, "Armor:", ref cmbArmor, currentRow++);
+            AddItemRow(layout, "Jewelry:", ref cmbJewelry, currentRow++);
+            AddItemRow(layout, "Accessory:", ref cmbAccessory, currentRow++);
+
+            // Populate dropdowns with items from card pool
+            var items = availableCards.Where(c => c.Category == "Item").Select(c => c.Name).ToList();
+            foreach (var combo in new[] { cmbWeapon, cmbArmor, cmbJewelry, cmbAccessory })
+            {
+                if (combo != null)
+                {
+                    combo.Items.AddRange(items.Cast<object>().ToArray());
+                }
+            }
+
+            contentPanel.Controls.Add(layout);
+            itemsTab.Controls.Add(contentPanel);
+            return itemsTab;
+        }
+
+        private void AddItemRow(TableLayoutPanel layout, string labelText, ref ComboBox? combo, int row)
+        {
+            Label label = new Label
+            {
+                Text = labelText,
+                Anchor = AnchorStyles.Left | AnchorStyles.Top,
+                AutoSize = true,
+                Margin = new Padding(0, 4, 0, 4)
+            };
+            layout.Controls.Add(label, 0, row);
+
+            if (combo == null)
+            {
+                combo = new ComboBox();
+            }
+            combo.Dock = DockStyle.Fill;
+            combo.DropDownStyle = ComboBoxStyle.DropDownList;
+            combo.Margin = new Padding(0, 4, 0, 4);
+            layout.Controls.Add(combo, 1, row);
+        }
+
+        private TabPage CreateStatsTab()
+        {
+            TabPage statsTab = new TabPage("Stats");
+
+            // Create a container panel for scrolling
+            Panel scrollPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                AutoScroll = true
+            };
+
+            // Create content panel that will hold our layout
+            Panel contentPanel = new Panel
+            {
+                AutoSize = true,
+                Padding = new Padding(10),
+                Dock = DockStyle.Top
+            };
+
+            TableLayoutPanel layout = new TableLayoutPanel
+            {
+                AutoSize = true,
+                ColumnCount = 4,
+                Padding = new Padding(10)
+            };
+
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
+
+            int row = 0;
+
+            // Basic stats
+            AddStatControl(layout, "HP:", ref nudHp, 0, row, 1, 999);
+            AddResistControl(layout, "Fire Resist:", "fire", 2, row++);
+
+            AddStatControl(layout, "Energy:", ref nudEnergy, 0, row, 0, 10);
+            AddResistControl(layout, "Cold Resist:", "cold", 2, row++);
+
+            AddStatControl(layout, "Speed:", ref nudSpeed, 0, row, 1, 99);
+            AddResistControl(layout, "Lightning Resist:", "lightning", 2, row++);
+
+            AddStatControl(layout, "Gold:", ref nudGold, 0, row, 0, 99999);
+            AddResistControl(layout, "Mind Resist:", "mind", 2, row++);
+
+            AddStatControl(layout, "Dust:", ref nudDust, 0, row, 0, 99999);
+            AddResistControl(layout, "Holy Resist:", "holy", 2, row++);
+
+            AddResistControl(layout, "Slashing Resist:", "slashing", 0, row);
+            AddResistControl(layout, "Shadow Resist:", "shadow", 2, row++);
+
+            AddResistControl(layout, "Blunt Resist:", "blunt", 0, row);
+            AddResistControl(layout, "Piercing Resist:", "piercing", 2, row);
+
+            contentPanel.Controls.Add(layout);
+            scrollPanel.Controls.Add(contentPanel);
+            statsTab.Controls.Add(scrollPanel);
+
+            return statsTab;
+        }
+
+        private void AddResistControl(TableLayoutPanel layout, string labelText, string resistKey, int col, int row)
+        {
+            Label label = new Label
+            {
+                Text = labelText,
+                Anchor = AnchorStyles.Left | AnchorStyles.Top,
+                AutoSize = true,
+                Margin = new Padding(0, 4, 0, 4)
+            };
+            layout.Controls.Add(label, col, row);
+
+            var resist = new NumericUpDown
+            {
+                Minimum = 0,
+                Maximum = 100,
+                Width = 100,
+                Margin = new Padding(0, 4, 0, 4)
+            };
+            resistControls[resistKey] = resist;
+
+            // Wire up the event handler
+            resist.ValueChanged += (s, e) =>
+            {
+                if (HeroData != null)
+                {
+                    var property = typeof(Hero).GetProperty($"resist{char.ToUpper(resistKey[0]) + resistKey.Substring(1)}");
+                    if (property != null)
+                    {
+                        property.SetValue(HeroData, (int)resist.Value);
+                    }
+                }
+            };
+
+            layout.Controls.Add(resist, col + 1, row);
+        }
+
+        private void AddStatControl(TableLayoutPanel layout, string labelText, ref NumericUpDown? control, int col, int row, decimal min, decimal max)
+        {
+            Label label = new Label
+            {
+                Text = labelText,
+                Anchor = AnchorStyles.Left | AnchorStyles.Top,
+                AutoSize = true,
+                Margin = new Padding(0, 4, 0, 4)
+            };
+            layout.Controls.Add(label, col, row);
+
+            if (control == null)
+            {
+                control = new NumericUpDown();
+            }
+
+            control.Minimum = min;
+            control.Maximum = max;
+            control.Value = min;
+            control.Width = 100;
+            control.Margin = new Padding(0, 4, 0, 4);
+            layout.Controls.Add(control, col + 1, row);
         }
 
         private void LoadData()
         {
-            if (lblDetails == null) return;
+            if (lblDetails == null || HeroData == null) return;
 
-            lblDetails.Text =
-                $"Hero Name: {HeroData?.gameName ?? "Unknown"}\n" +
-                $"Owner: {HeroData?.owner ?? "Unknown"}\n" +
-                $"Class: {HeroData?.className ?? "Unknown"}\n" +
-                $"Level: {HeroData?.level}\n" +
-                $"XP: {HeroData?.experience}\n" +
-                $"HP: {HeroData?.hp}\n" +
-                $"Energy: {HeroData?.energy}\n" +
-                $"Speed: {HeroData?.speed}\n" +
-                $"Items: Weapon: {HeroData?.weapon ?? "None"}, Armor: {HeroData?.armor ?? "None"}, " +
-                $"Jewelry: {HeroData?.jewelry ?? "None"}, Accessory: {HeroData?.accesory ?? "None"}\n" +
-                $"Traits: {string.Join(", ", HeroData?.traits?.Select(t => t ?? "Unknown") ?? Array.Empty<string>())}";
+            lblDetails.Text = $"Hero: {HeroData.gameName ?? "Unknown"} ({HeroData.className ?? "Unknown"})";
 
+            // Load deck
             UpdateDeckList();
             UpdatePoolList();
+
+            // Load items
+            if (cmbWeapon != null) cmbWeapon.SelectedItem = HeroData.weapon;
+            if (cmbArmor != null) cmbArmor.SelectedItem = HeroData.armor;
+            if (cmbJewelry != null) cmbJewelry.SelectedItem = HeroData.jewelry;
+            if (cmbAccessory != null) cmbAccessory.SelectedItem = HeroData.accesory;
+
+            // Load stats
+            if (nudHp != null && HeroData.hp != null) nudHp.Value = HeroData.hp.Value;
+            if (nudEnergy != null && HeroData.energy != null) nudEnergy.Value = HeroData.energy.Value;
+            if (nudSpeed != null && HeroData.speed != null) nudSpeed.Value = HeroData.speed.Value;
+            if (nudGold != null) nudGold.Value = (decimal)HeroData.heroGold;
+            if (nudDust != null) nudDust.Value = (decimal)HeroData.heroDust;
+
+            // Load resists with direct property access
+            if (resistControls.TryGetValue("slashing", out var slashingControl))
+                slashingControl.Value = HeroData.resistSlashing;
+            if (resistControls.TryGetValue("blunt", out var bluntControl))
+                bluntControl.Value = HeroData.resistBlunt;
+            if (resistControls.TryGetValue("piercing", out var piercingControl))
+                piercingControl.Value = HeroData.resistPiercing;
+            if (resistControls.TryGetValue("fire", out var fireControl))
+                fireControl.Value = HeroData.resistFire;
+            if (resistControls.TryGetValue("cold", out var coldControl))
+                coldControl.Value = HeroData.resistCold;
+            if (resistControls.TryGetValue("lightning", out var lightningControl))
+                lightningControl.Value = HeroData.resistLightning;
+            if (resistControls.TryGetValue("mind", out var mindControl))
+                mindControl.Value = HeroData.resistMind;
+            if (resistControls.TryGetValue("holy", out var holyControl))
+                holyControl.Value = HeroData.resistHoly;
+            if (resistControls.TryGetValue("shadow", out var shadowControl))
+                shadowControl.Value = HeroData.resistShadow;
         }
 
         private void UpdateDeckList()
@@ -165,15 +415,15 @@ namespace AtOSaveEditor.Controls
             string search = txtPoolSearch.Text?.ToLower() ?? "";
             var selectedCategories = categoryCheckBoxes
                 .Where(cb => cb?.Checked == true)
-                .Select(cb => cb.Text)
+                .Select(cb => cb?.Text)
+                .Where(text => text != null)
                 .ToList();
 
             lstPool.Items.Clear();
 
             foreach (var card in availableCards)
             {
-                // if any category is checked, filter by it; otherwise show all
-                if (card == null) continue;
+                if (card?.Category == null) continue;
 
                 if (selectedCategories.Any() && !selectedCategories.Contains(card.Category))
                     continue;
@@ -209,7 +459,7 @@ namespace AtOSaveEditor.Controls
 
         private void LstPool_SelectedIndexChanged(object? sender, EventArgs e)
         {
-            if (lstPool?.SelectedItem is CardInfo card)
+            if (lstPool?.SelectedItem is CardInfo card && card.Name != null)
                 DisplayCardImage(card.Name);
         }
 

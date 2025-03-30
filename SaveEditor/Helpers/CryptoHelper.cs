@@ -112,7 +112,26 @@ namespace AtOSaveEditor.Helpers
                     BinaryFormatter formatter = new BinaryFormatter();
                     formatter.Binder = _binder;
                     progress?.Report(90);
-                    var result = await Task.Run(() => (SaveData)formatter.Deserialize(ms), cancellationToken);
+                    var result = await Task.Run(() =>
+                    {
+                        var data = (SaveData)formatter.Deserialize(ms);
+
+                        // Re-parse TeamAtO with proper JSON settings
+                        if (!string.IsNullOrEmpty(data.TeamAtO))
+                        {
+                            var jsonOptions = new JsonSerializerOptions
+                            {
+                                PropertyNameCaseInsensitive = false,
+                                WriteIndented = true
+                            };
+                            var teamData = JsonSerializer.Deserialize<TeamAtO>(data.TeamAtO, jsonOptions);
+                            if (teamData != null)
+                            {
+                                data.TeamAtO = JsonSerializer.Serialize(teamData, jsonOptions);
+                            }
+                        }
+                        return data;
+                    }, cancellationToken);
 #pragma warning restore SYSLIB0011
 
                     progress?.Report(100);
