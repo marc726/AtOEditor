@@ -70,11 +70,9 @@ namespace AtOSaveEditor
 
             tabControl = new TabControl();
             tabControl.Dock = DockStyle.Fill;
-            tabControl.Multiline = true;
-            tabControl.SizeMode = TabSizeMode.Fixed;
-            tabControl.ItemSize = new Size(150, 60);
-            tabControl.DrawMode = TabDrawMode.OwnerDrawFixed;
-            tabControl.DrawItem += TabControl_DrawItem;
+            tabControl.Multiline = false;
+            tabControl.SizeMode = TabSizeMode.Normal;
+            tabControl.Padding = new Point(3, 30); // Top padding of 30px
 
             this.Controls.Add(tabControl);
 
@@ -85,35 +83,6 @@ namespace AtOSaveEditor
 
             cacheFilePath = Path.Combine(exeDir, "cardCache.json");
             LoadAvailableCards();
-        }
-
-        private void TabControl_DrawItem(object sender, DrawItemEventArgs e)
-        {
-            if (sender is not TabControl tc)
-                return;
-
-            if (e.Index < 0 || e.Index >= tc.TabPages.Count)
-                return;
-
-            string tabText = tc.TabPages[e.Index].Text;
-
-            e.DrawBackground();
-
-            Rectangle rect = e.Bounds;
-            rect.Inflate(-1, -1);
-
-            using (StringFormat sf = new StringFormat())
-            {
-                sf.Alignment = StringAlignment.Center;
-                sf.LineAlignment = StringAlignment.Center;
-                sf.Trimming = StringTrimming.EllipsisCharacter;
-                using (Brush brush = new SolidBrush(Color.Black))
-                {
-                    e.Graphics.DrawString(tabText, tc.Font, brush, rect, sf);
-                }
-            }
-
-            e.DrawFocusRectangle();
         }
 
         private void LoadAvailableCards()
@@ -265,12 +234,6 @@ namespace AtOSaveEditor
                 editor.Dock = DockStyle.Fill;
                 page.Controls.Add(editor);
                 tabControl.TabPages.Add(page);
-            }
-            if (tabControl.TabCount == 4)
-            {
-                int totalTabsWidth = tabControl.ItemSize.Width * 4;
-                int offset = (tabControl.Width - totalTabsWidth) / 2;
-                tabControl.Padding = new Point(offset, 3);
             }
         }
 
