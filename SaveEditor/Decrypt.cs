@@ -1,13 +1,6 @@
-// Decrypt.cs
-using System;
-using System.IO;
-using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Security.Cryptography;
-using System.Windows.Forms;
-using System.Xml;
-using System.Xml.Serialization;  // for XmlWriterSettings
-using SaveEditor;               // for Cryptography.Key/IV and GameData
+
 
 #pragma warning disable SYSLIB0011
 
@@ -15,7 +8,6 @@ namespace SaveEditor
 {
     public static class Decrypt
     {
-        // Decrypt .ato → GameData
         public static (GameData?, string?) SelectAndDecrypt()
         {
             using var dlg = new OpenFileDialog
