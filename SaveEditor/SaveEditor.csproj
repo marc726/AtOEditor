@@ -10,6 +10,9 @@
 
   <ItemGroup>
     <PackageReference Include="System.Windows.Extensions" Version="9.0.3" />
+    <PackageReference Include="Compat.Runtime.Serialization" Version="1.0.3" />
+    <PackageReference Include="System.Runtime.Serialization.Formatters" Version="9.0.5" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
   <ItemGroup>
@@ -20,7 +23,5 @@
       <HintPath>..\lib\UnityEngine.CoreModule.dll</HintPath>
     </Reference>
   </ItemGroup>
-
-  <!-- Removed explicit inclusion of Helpers\CryptoHelper.cs -->
 
 </Project>
