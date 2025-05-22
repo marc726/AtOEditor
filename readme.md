@@ -10,7 +10,7 @@ The project targets .NET 8.0 (net8.0-windows)
 
 - **Decrypt and Edit Saves:**  
   Opens an encrypted `.ato` save file, decrypts it to json.
-  - Note: These files can be found in `\AppData\LocalLow\Dreamsite Games\AcrossTheObelisk\<UserID>` for Windows.
+  - Note: Original save files can be found in `\AppData\LocalLow\Dreamsite Games\AcrossTheObelisk\<UserID>` for Windows.
   
 - **Re-Encryption:**  
   After editing, the save file can be re-serialized and re-encrypted, producing a new `.ato` file.
