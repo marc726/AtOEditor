@@ -1,12 +1,7 @@
-// Encrypt.cs
-using System;
-using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Security.Cryptography;
-using System.Windows.Forms;
 using System.Xml;
 using System.Runtime.Serialization;
-using SaveEditor;  // for Cryptography.Key/IV and GameData
 
 #pragma warning disable SYSLIB0011
 
@@ -14,7 +9,6 @@ namespace SaveEditor
 {
     public static class Encrypt
     {
-        // Read XML → GameData → encrypt → .ato
         public static (GameData?, string?) SelectAndEncrypt()
         {
             using var dlg = new OpenFileDialog
@@ -26,7 +20,6 @@ namespace SaveEditor
             if (dlg.ShowDialog() != DialogResult.OK)
                 return (null, null);
 
-            // 1) Deserialize GameData from XML
             GameData? gd;
             var serializer = new DataContractSerializer(typeof(GameData));
             using (var xmlFs = new FileStream(dlg.FileName, FileMode.Open, FileAccess.Read))
@@ -37,7 +30,6 @@ namespace SaveEditor
             if (gd == null)
                 throw new InvalidOperationException("Failed to parse XML into GameData.");
 
-            // 2) Encrypt + BinaryFormatter → .ato
             string outPath = Path.ChangeExtension(dlg.FileName, ".ato");
             using var des = DES.Create();
             des.Key = Cryptography.Key;

@@ -1,13 +1,8 @@
-// Program.cs (or wherever your Main lives)
-
-using System;
-using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Security.Cryptography;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
-using SaveEditor;  // for Decrypt.SelectAndDecrypt() and GameData
-using System.Windows.Forms;
+
 
 #pragma warning disable SYSLIB0011
 
@@ -23,11 +18,11 @@ namespace SaveEditor
 
             if (choice == "decrypt")
             {
-                // 1) Binary-decrypt into your GameData
+                // Binary-decrypt into GameData
                 var (gd, path) = Decrypt.SelectAndDecrypt();
                 if (gd == null || path == null) return;
 
-                // 2) JSON-serialize with full type info & all members
+                // JSON-serialize with full type info & all members
                 var settings = new JsonSerializerSettings
                 {
                     Formatting = Formatting.Indented,
@@ -49,7 +44,7 @@ namespace SaveEditor
             }
             else if (choice == "encrypt")
             {
-                // 1) Pick your edited JSON
+                // Pick edited JSON
                 using var dlg = new OpenFileDialog
                 {
                     Title = "Select edited .json",
@@ -58,7 +53,7 @@ namespace SaveEditor
                 };
                 if (dlg.ShowDialog() != DialogResult.OK) return;
 
-                // 2) Read & deserialize back to GameData
+                // Read & deserialize back to GameData
                 var settings = new JsonSerializerSettings
                 {
                     Formatting = Formatting.Indented,
@@ -75,7 +70,7 @@ namespace SaveEditor
                 var gd = JsonConvert.DeserializeObject<GameData>(json, settings)
                          ?? throw new InvalidOperationException("JSON → GameData failed");
 
-                // 3) Binary-re-encrypt
+                // Binary-re-encrypt
                 string outAto = Path.ChangeExtension(dlg.FileName, ".ato");
                 using var des = DES.Create();
                 des.Key = Cryptography.Key;
