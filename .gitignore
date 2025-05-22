@@ -31,5 +31,8 @@ SaveEditor/lib/*.dll
 #.png card asssets
 /assets/
 
+# Build files
+.json
+
 # Build results
 *.exe
