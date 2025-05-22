@@ -1,6 +1,4 @@
-## Across the Obelisk Deck Editor
-
-Save decryptor and encryptor
+## Across the Obelisk Decryptor/Encryptor
 
 Tested on Across the Obelisk v1.5.0.1
 
