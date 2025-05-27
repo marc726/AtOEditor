@@ -3,7 +3,6 @@ using System.Security.Cryptography;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
-
 #pragma warning disable SYSLIB0011
 
 namespace SaveEditor
@@ -68,7 +67,7 @@ namespace SaveEditor
                 };
                 string json = File.ReadAllText(dlg.FileName);
                 var gd = JsonConvert.DeserializeObject<GameData>(json, settings)
-                         ?? throw new InvalidOperationException("JSON → GameData failed");
+                         ?? throw new InvalidOperationException("JSON to GameData failed");
 
                 // Binary-re-encrypt
                 string outAto = Path.ChangeExtension(dlg.FileName, ".ato");

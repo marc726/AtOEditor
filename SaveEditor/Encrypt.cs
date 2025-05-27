@@ -13,8 +13,8 @@ namespace SaveEditor
         {
             using var dlg = new OpenFileDialog
             {
-                Title = "Select XML to encrypt",
-                Filter = "XML files (*.xml)|*.xml|All files (*.*)|*.*",
+                Title = "Select JSON to encrypt",
+                Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
                 CheckFileExists = true
             };
             if (dlg.ShowDialog() != DialogResult.OK)
@@ -22,13 +22,13 @@ namespace SaveEditor
 
             GameData? gd;
             var serializer = new DataContractSerializer(typeof(GameData));
-            using (var xmlFs = new FileStream(dlg.FileName, FileMode.Open, FileAccess.Read))
-            using (var reader = XmlDictionaryReader.CreateTextReader(xmlFs, new XmlDictionaryReaderQuotas()))
+            using (var jsonFs = new FileStream(dlg.FileName, FileMode.Open, FileAccess.Read))
+            using (var reader = XmlDictionaryReader.CreateTextReader(jsonFs, new XmlDictionaryReaderQuotas()))
             {
                 gd = serializer.ReadObject(reader) as GameData;
             }
             if (gd == null)
-                throw new InvalidOperationException("Failed to parse XML into GameData.");
+                throw new InvalidOperationException("Failed to parse JSON into GameData.");
 
             string outPath = Path.ChangeExtension(dlg.FileName, ".ato");
             using var des = DES.Create();
