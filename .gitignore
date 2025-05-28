@@ -39,3 +39,6 @@ SaveEditor/lib/*.dll
 
 #pdb files
 *.pdb
+
+#misc folder
+/misc/
