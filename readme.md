@@ -7,7 +7,7 @@ The project targets .NET 8.0 (net8.0-windows)
 ### Features
 
 - **Decrypt and Edit Saves:**  
-  Opens an encrypted `.ato` save file, decrypts it to json. (At the moment, decryption/encryption only works for gamedata saves)
+  Opens an encrypted `.ato` save file, decrypts it to json. (decryption/encryption untested on .ato files that are not player.ato or gamedata_#.ato)
   - Note: Original save files can be found in `\AppData\LocalLow\Dreamsite Games\AcrossTheObelisk\<UserID>` for Windows.
   
 - **Re-Encryption:**  
