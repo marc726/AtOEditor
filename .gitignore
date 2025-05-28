@@ -36,3 +36,6 @@ SaveEditor/lib/*.dll
 
 # Build results
 *.exe
+
+#pdb files
+*.pdb

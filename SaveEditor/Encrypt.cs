@@ -1,7 +1,9 @@
-using System.Runtime.Serialization.Formatters.Binary;
+using System;
+using System.IO;
 using System.Security.Cryptography;
-using System.Xml;
-using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters.Binary;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 
 #pragma warning disable SYSLIB0011
 
@@ -9,38 +11,39 @@ namespace SaveEditor
 {
     public static class Encrypt
     {
-        public static (GameData?, string?) SelectAndEncrypt()
+        public static void EncryptFile(string jsonPath)
         {
-            using var dlg = new OpenFileDialog
+            System.Console.WriteLine($"Encrypting: {Path.GetFileName(jsonPath)}");
+
+            var settings = new JsonSerializerSettings
             {
-                Title = "Select JSON to encrypt",
-                Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
-                CheckFileExists = true
+                Formatting = Newtonsoft.Json.Formatting.Indented,
+                TypeNameHandling = TypeNameHandling.All,
+                ContractResolver = new DefaultContractResolver
+                {
+                    DefaultMembersSearchFlags =
+                        System.Reflection.BindingFlags.Public
+                        | System.Reflection.BindingFlags.NonPublic
+                        | System.Reflection.BindingFlags.Instance
+                }
             };
-            if (dlg.ShowDialog() != DialogResult.OK)
-                return (null, null);
 
-            GameData? gd;
-            var serializer = new DataContractSerializer(typeof(GameData));
-            using (var jsonFs = new FileStream(dlg.FileName, FileMode.Open, FileAccess.Read))
-            using (var reader = XmlDictionaryReader.CreateTextReader(jsonFs, new XmlDictionaryReaderQuotas()))
-            {
-                gd = serializer.ReadObject(reader) as GameData;
-            }
-            if (gd == null)
-                throw new InvalidOperationException("Failed to parse JSON into GameData.");
+            string json = File.ReadAllText(jsonPath);
+            var obj = JsonConvert.DeserializeObject(json, settings)
+                     ?? throw new InvalidOperationException("JSON deserialization failed");
 
-            string outPath = Path.ChangeExtension(dlg.FileName, ".ato");
+            string outAto = Path.ChangeExtension(jsonPath, ".ato");
             using var des = DES.Create();
             des.Key = Cryptography.Key;
             des.IV = Cryptography.IV;
 
-            using var fsOut = new FileStream(outPath, FileMode.Create, FileAccess.Write);
+            using var fsOut = new FileStream(outAto, FileMode.Create, FileAccess.Write);
             using var crypto = new CryptoStream(fsOut, des.CreateEncryptor(), CryptoStreamMode.Write);
-            new BinaryFormatter().Serialize(crypto, gd);
+            new BinaryFormatter().Serialize(crypto, obj);
             crypto.FlushFinalBlock();
 
-            return (gd, outPath);
+            System.Console.WriteLine($"Encrypted save written to: {Path.GetFileName(outAto)}");
+            System.Console.WriteLine($"Object type: {obj.GetType().Name}");
         }
     }
 }

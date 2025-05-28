@@ -1,91 +1,65 @@
-using System.Runtime.Serialization.Formatters.Binary;
-using System.Security.Cryptography;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
-
-#pragma warning disable SYSLIB0011
+using System;
+using System.IO;
 
 namespace SaveEditor
 {
     static class Program
     {
         [STAThread]
-        static void Main()
+        static void Main(string[] args)
         {
-            System.Console.Write("Enter 'decrypt' or 'encrypt': ");
-            var choice = (System.Console.ReadLine() ?? "").Trim().ToLower();
-
-            if (choice == "decrypt")
+            try
             {
-                // Binary-decrypt into GameData
-                var (gd, path) = Decrypt.SelectAndDecrypt();
-                if (gd == null || path == null) return;
 
-                // JSON-serialize with full type info & all members
-                var settings = new JsonSerializerSettings
+                if (args.Length == 0)
                 {
-                    Formatting = Formatting.Indented,
-                    TypeNameHandling = TypeNameHandling.All,
-                    ContractResolver = new DefaultContractResolver
-                    {
-                        DefaultMembersSearchFlags =
-                            System.Reflection.BindingFlags.Public
-                          | System.Reflection.BindingFlags.NonPublic
-                          | System.Reflection.BindingFlags.Instance
-                    }
-                };
+                    System.Console.WriteLine("Drag and drop a .ato file to decrypt or a .json file to encrypt onto this executable.");
+                    System.Console.WriteLine("Press any key to exit...");
+                    System.Console.ReadKey();
+                    return;
+                }
 
-                string json = JsonConvert.SerializeObject(gd, settings);
-                var outJson = Path.ChangeExtension(path, ".json");
-                File.WriteAllText(outJson, json);
+                string filePath = args[0];
+                System.Console.WriteLine($"Input file: {filePath}");
+                System.Console.WriteLine($"File exists: {File.Exists(filePath)}");
 
-                System.Console.WriteLine($"Decrypted JSON written to {outJson}");
+                if (!File.Exists(filePath))
+                {
+                    System.Console.WriteLine($"File not found: {filePath}");
+                    System.Console.WriteLine("Press any key to exit...");
+                    System.Console.ReadKey();
+                    return;
+                }
+
+                string extension = Path.GetExtension(filePath).ToLower();
+                System.Console.WriteLine($"File extension: '{extension}'");
+
+                if (extension == ".ato")
+                {
+                    System.Console.WriteLine("Starting decryption...");
+                    Decrypt.DecryptFile(filePath);
+                    System.Console.WriteLine("Decryption completed.");
+                }
+                else if (extension == ".json")
+                {
+                    System.Console.WriteLine("Starting encryption...");
+                    Encrypt.EncryptFile(filePath);
+                    System.Console.WriteLine("Encryption completed.");
+                }
+                else
+                {
+                    System.Console.WriteLine($"Unsupported file extension: {extension}");
+                    System.Console.WriteLine("Supported extensions: .ato (decrypt), .json (encrypt)");
+                }
             }
-            else if (choice == "encrypt")
+            catch (Exception ex)
             {
-                // Pick edited JSON
-                using var dlg = new OpenFileDialog
-                {
-                    Title = "Select edited .json",
-                    Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
-                    CheckFileExists = true
-                };
-                if (dlg.ShowDialog() != DialogResult.OK) return;
-
-                // Read & deserialize back to GameData
-                var settings = new JsonSerializerSettings
-                {
-                    Formatting = Formatting.Indented,
-                    TypeNameHandling = TypeNameHandling.All,
-                    ContractResolver = new DefaultContractResolver
-                    {
-                        DefaultMembersSearchFlags =
-                            System.Reflection.BindingFlags.Public
-                            | System.Reflection.BindingFlags.NonPublic
-                            | System.Reflection.BindingFlags.Instance
-                    }
-                };
-                string json = File.ReadAllText(dlg.FileName);
-                var gd = JsonConvert.DeserializeObject<GameData>(json, settings)
-                         ?? throw new InvalidOperationException("JSON to GameData failed");
-
-                // Binary-re-encrypt
-                string outAto = Path.ChangeExtension(dlg.FileName, ".ato");
-                using var des = DES.Create();
-                des.Key = Cryptography.Key;
-                des.IV = Cryptography.IV;
-
-                using var fsOut = new FileStream(outAto, FileMode.Create, FileAccess.Write);
-                using var crypto = new CryptoStream(fsOut, des.CreateEncryptor(), CryptoStreamMode.Write);
-                new BinaryFormatter().Serialize(crypto, gd);
-                crypto.FlushFinalBlock();
-
-                System.Console.WriteLine($"Encrypted save written to {outAto}");
+                System.Console.WriteLine($"MAIN ERROR: {ex.GetType().Name}: {ex.Message}");
+                System.Console.WriteLine($"Stack trace: {ex.StackTrace}");
             }
-            else
-            {
-                System.Console.WriteLine("Invalid choice.");
-            }
+
+            System.Console.WriteLine("Press any key to exit...");
+            System.Console.ReadKey();
         }
     }
 }
