@@ -1,6 +1,4 @@
-## Across the Obelisk Deck Editor
-
-Save decryptor and encryptor
+## Across the Obelisk Decryptor/Encryptor
 
 Tested on Across the Obelisk v1.5.0.1
 
@@ -9,7 +7,7 @@ The project targets .NET 8.0 (net8.0-windows)
 ### Features
 
 - **Decrypt and Edit Saves:**  
-  Opens an encrypted `.ato` save file, decrypts it to json.
+  Opens an encrypted `.ato` save file, decrypts it to json. (At the moment, decryption/encryption only works for gamedata saves)
   - Note: Original save files can be found in `\AppData\LocalLow\Dreamsite Games\AcrossTheObelisk\<UserID>` for Windows.
   
 - **Re-Encryption:**  
